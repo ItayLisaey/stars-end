@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/header.jpg" alt="stars-end — a Playwright AI testing helper" width="100%" />
+  <img src="https://raw.githubusercontent.com/ItayLisaey/stars-end/main/assets/header.jpg" alt="stars-end — a Playwright AI testing helper" width="100%" />
 </p>
 
 # stars-end
