@@ -1,7 +1,7 @@
 {
   "name": "stars-end",
-  "version": "0.1.0",
-  "description": "Lightweight, Playwright-only, Gemini-first natural-language browser agent, influenced by Midscene",
+  "version": "0.1.1",
+  "description": "Lightweight, Playwright-only, natural-language e2e testing agent, influenced by Midscene",
   "homepage": "https://github.com/ItayLisaey/stars-end#readme",
   "bugs": {
     "url": "https://github.com/ItayLisaey/stars-end/issues"
@@ -35,7 +35,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run src",
-    "test:live": "vitest run --dir test/live",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt .",

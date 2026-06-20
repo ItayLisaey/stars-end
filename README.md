@@ -1,13 +1,19 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ItayLisaey/stars-end/main/assets/header.jpg" alt="stars-end — a Playwright AI testing helper" width="100%" />
+  <img src="https://raw.githubusercontent.com/ItayLisaey/stars-end/main/assets/header.jpg" alt="stars-end, a Playwright AI testing helper" width="100%" />
 </p>
 
 # stars-end
 
-A lightweight, **Playwright-only**, **Gemini-first** library for driving a
-browser with natural language. Hand it a Playwright `Page` and plain-English
-instructions — it locates elements visually, performs actions, reads structured
-data, and can run an autonomous planning loop to accomplish a goal.
+A lightweight, **Playwright-only** library for **end-to-end (e2e) testing** with
+natural language. Hand it a Playwright `Page` and plain-English instructions, and
+it locates elements visually, performs actions, reads structured data, asserts on
+what's on screen, and can run an autonomous planning loop to accomplish a goal.
+Drop it into your existing Playwright e2e suite to write resilient, intent-based
+tests instead of brittle selectors.
+
+Visual grounding is powered by Google's Gemini models through the
+[Vercel AI SDK](https://sdk.vercel.ai); the model layer is abstracted, so other
+providers can be slotted in.
 
 ```ts
 import { chromium } from "playwright";
@@ -19,6 +25,11 @@ const page = await browser.newPage({ deviceScaleFactor: 2 });
 await page.goto("https://example.com/shop");
 
 const agent = new Agent(page, { model: "gemini-2.5-flash" });
+
+// autonomous: give it a goal and it plans + acts until done
+const result = await agent.act("add the cheapest backpack to the cart and go to checkout");
+
+// ...or drive individual steps yourself:
 
 // instant actions
 await agent.tap('the "Add to cart" button for the backpack');
@@ -35,9 +46,6 @@ const items = await agent.query(
 // assertions
 await agent.assert("the order total is $42.00");
 await agent.waitFor("the success toast is visible", { timeoutMs: 10_000 });
-
-// autonomous
-const result = await agent.act("add the cheapest backpack to the cart and go to checkout");
 ```
 
 ## Install
@@ -59,8 +67,8 @@ model tier is abstracted behind a small interface.
 
 ## Why
 
-- **One driver, one focus.** Just Playwright and visual grounding — no Android /
-  iOS / desktop surfaces, no bridge mode, no MCP servers.
+- **One driver, one focus.** Just Playwright and visual grounding, with no
+  Android, iOS, or desktop surfaces, no bridge mode, and no MCP servers.
 - **Structured output via the AI SDK.** Schemas are passed natively to
   `generateObject`; no hand-rolled JSON repair on the happy path.
 - **Deterministic, testable core.** The coordinate pipeline (normalized → image
@@ -130,11 +138,10 @@ are excluded from the default run.
 ## Acknowledgements
 
 stars-end is **heavily influenced by [Midscene](https://github.com/web-infra-dev/midscene)**.
-Several of its core mechanisms — most notably the visual-grounding **coordinate
-pipeline** and the **locate / planning** approach — are **ported or adapted**
-from Midscene. Midscene is a much broader project (many platforms and model
-families); stars-end is a focused, Playwright-and-Gemini-only take on the parts
-we use most.
+Several of its core mechanisms are **ported or adapted** from Midscene, most
+notably the visual-grounding **coordinate pipeline** and the **locate / planning**
+approach. Midscene is a much broader project (many platforms and model families);
+stars-end is a focused, Playwright-only take on the parts we use most.
 
 Huge thanks to the Midscene authors at ByteDance for the battle-tested design
 this builds on.
