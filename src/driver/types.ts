@@ -1,0 +1,42 @@
+/**
+ * PageDriver interface. The single platform seam: only
+ * `playwright-driver.ts` imports `playwright`.
+ */
+import type { Size } from "../types.js";
+import type { KeySpec } from "./keyboard.js";
+
+export interface Screenshot {
+  /** 'data:image/jpeg;base64,...' */
+  base64: string;
+  /** image pixels (CSS px * dpr) */
+  width: number;
+  height: number;
+  dpr: number;
+}
+
+export type ScrollEdge = "top" | "bottom" | "left" | "right";
+
+export interface PageDriver {
+  screenshot(): Promise<Screenshot>;
+  size(): Promise<Size>; // CSS px
+  url(): Promise<string>;
+
+  // all click coords are CSS px; Playwright converts to device px internally
+  tap(
+    x: number,
+    y: number,
+    opt?: { button?: "left" | "right" | "middle"; count?: number },
+  ): Promise<void>;
+  move(x: number, y: number): Promise<void>;
+  wheel(deltaX: number, deltaY: number, from?: { x: number; y: number }): Promise<void>;
+  scrollTo(edge: ScrollEdge, from?: { x: number; y: number }): Promise<void>;
+
+  type(text: string): Promise<void>;
+  press(keys: KeySpec[]): Promise<void>;
+  clearInput(center?: { x: number; y: number }): Promise<void>;
+
+  waitForSettle(): Promise<void>;
+  waitForDomQuiet(opt?: { quietMs?: number; timeoutMs?: number }): Promise<void>;
+
+  evaluate<T>(fn: string | ((arg: any) => T | Promise<T>), arg?: unknown): Promise<T>;
+}

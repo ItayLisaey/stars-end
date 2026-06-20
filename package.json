@@ -1,0 +1,75 @@
+{
+  "name": "stars-end",
+  "version": "0.1.0",
+  "description": "Lightweight, Playwright-only, Gemini-first natural-language browser agent, influenced by Midscene",
+  "homepage": "https://github.com/ItayLisaey/stars-end#readme",
+  "bugs": {
+    "url": "https://github.com/ItayLisaey/stars-end/issues"
+  },
+  "license": "MIT",
+  "author": "Itay Lisaey",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ItayLisaey/stars-end.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run src",
+    "test:live": "vitest run --dir test/live",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "check:exports": "publint --strict && attw --pack . --profile node16 --ignore-rules cjs-resolves-to-esm",
+    "prepack": "pnpm build",
+    "changeset": "changeset",
+    "version:packages": "changeset version",
+    "release": "changeset publish"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.2.0",
+    "ai": "^4.3.0",
+    "jsonrepair": "^3.12.0",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.3",
+    "@changesets/cli": "^2.31.0",
+    "@types/node": "^22.10.0",
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.0.0",
+    "playwright": "^1.49.0",
+    "publint": "^0.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.25.0"
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40.0",
+    "zod": "^3.25.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.34.4"
+}

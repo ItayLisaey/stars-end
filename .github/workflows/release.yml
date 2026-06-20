@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create the version-bump PR / git tags
+  pull-requests: write # open the "Version Packages" PR
+  id-token: write # OIDC trusted publishing + provenance (no npm token needed)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # >=22.14 required for npm OIDC trusted publishing
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Publishes via npm OIDC "trusted publishing": pnpm (>=10.12) exchanges the
+      # GitHub Actions OIDC token for a short-lived npm credential — no NPM_TOKEN
+      # secret, and provenance attestations are generated automatically.
+      #
+      # One-time setup: on npmjs.com, add a trusted publisher for `stars-end`
+      # pointing at ItayLisaey/stars-end and this workflow (release.yml).
+      - uses: changesets/action@v1
+        with:
+          version: pnpm run version:packages
+          publish: pnpm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
