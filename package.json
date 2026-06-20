@@ -1,6 +1,6 @@
 {
   "name": "stars-end",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightweight, Playwright-only, natural-language e2e testing agent, influenced by Midscene",
   "homepage": "https://github.com/ItayLisaey/stars-end#readme",
   "bugs": {
