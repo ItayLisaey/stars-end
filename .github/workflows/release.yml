@@ -23,14 +23,18 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22 # >=22.14 required for npm OIDC trusted publishing
+          node-version: 24 # >=22.14 required for npm OIDC trusted publishing
           cache: pnpm
+
+      # npm OIDC "trusted publishing" needs npm >= 11.5.1; Node ships an older
+      # npm, so upgrade it before the publish step.
+      - run: npm install -g npm@latest
 
       - run: pnpm install --frozen-lockfile
 
-      # Publishes via npm OIDC "trusted publishing": pnpm (>=10.12) exchanges the
-      # GitHub Actions OIDC token for a short-lived npm credential — no NPM_TOKEN
-      # secret, and provenance attestations are generated automatically.
+      # Publishes via npm OIDC "trusted publishing": the GitHub Actions OIDC token
+      # is exchanged for a short-lived npm credential (no NPM_TOKEN secret), and
+      # provenance attestations are generated automatically.
       #
       # One-time setup: on npmjs.com, add a trusted publisher for `stars-end`
       # pointing at ItayLisaey/stars-end and this workflow (release.yml).
