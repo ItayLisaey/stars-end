@@ -7,7 +7,7 @@ import { ElementNotFoundError } from "../errors.js";
 import { pixelBboxToRect, rectCenter } from "../geometry/coordinates.js";
 import type { LocateModelResult, ModelTier, UIContext } from "../model/types.js";
 import { getXpathsByPoint } from "../extractor/xpath.injected.js";
-import type { LocateResult } from "../types.js";
+import type { LocateResult, PixelBbox } from "../types.js";
 import { deepLocate } from "./deep-locate.js";
 
 export interface LocateOpt {
@@ -16,6 +16,19 @@ export interface LocateOpt {
   searchArea?: string;
   /** reuse an already-built context to avoid a second screenshot */
   context?: UIContext;
+}
+
+/**
+ * Below this CSS-px edge a target counts as "small" (icon-only buttons, tight
+ * controls). Grounding precision drops on these, so we auto-engage the
+ * crop+upscale deep-locate pass before trusting the coarse hit.
+ */
+const SMALL_TARGET_CSS_PX = 28;
+
+function isSmallTarget(bbox: PixelBbox, dpr: number): boolean {
+  const w = (bbox[2] - bbox[0]) / dpr;
+  const h = (bbox[3] - bbox[1]) / dpr;
+  return Math.min(w, h) < SMALL_TARGET_CSS_PX;
 }
 
 export async function locate(
@@ -36,6 +49,11 @@ export async function locate(
     if (!res.bbox) {
       const refined = await deepLocate(page, tier, ctx, prompt).catch(() => res);
       if (refined.bbox) res = refined;
+    } else if (isSmallTarget(res.bbox, ctx.dpr)) {
+      // small / icon-only hit: re-resolve with crop+upscale and prefer it when
+      // it succeeds, rather than risk a low-precision miss on the coarse box.
+      const refined = await deepLocate(page, tier, ctx, prompt).catch(() => null);
+      if (refined?.bbox) res = refined;
     }
   }
 

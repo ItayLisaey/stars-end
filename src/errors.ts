@@ -49,6 +49,43 @@ export class TooManyErrorsError extends Error {
   }
 }
 
+/**
+ * Raised when the agent keeps planning the same action but the screen never
+ * changes — a tap that "succeeds" at coordinates yet is a no-op (obscured by an
+ * overlay, already actioned, etc.). Distinct from {@link TooManyErrorsError},
+ * which only counts thrown errors; a no-op action throws nothing, so without
+ * this guard the loop would livelock until the host runner's timeout.
+ */
+export class NoProgressError extends Error {
+  readonly signature: string;
+  readonly repeats: number;
+  constructor(signature: string, repeats: number) {
+    super(
+      `no progress: repeated "${signature}" ${repeats} times without changing the screen — the target is likely obscured, a no-op, or already actioned`,
+    );
+    this.name = "NoProgressError";
+    this.signature = signature;
+    this.repeats = repeats;
+  }
+}
+
+/**
+ * Raised when an `input` action ran but no text landed in the field (e.g. focus
+ * never reached a rich/contenteditable composer). The driver reports the field
+ * still empty after typing, so we surface the failure instead of letting the
+ * planner believe the text was entered.
+ */
+export class InputVerificationError extends Error {
+  constructor(value: string) {
+    super(
+      `input did not land: the field is still empty after typing ${JSON.stringify(
+        value.length > 40 ? `${value.slice(0, 40)}…` : value,
+      )} — focus may not have reached an editable field`,
+    );
+    this.name = "InputVerificationError";
+  }
+}
+
 export class ReplanLimitError extends Error {
   constructor() {
     super("replan limit exceeded");

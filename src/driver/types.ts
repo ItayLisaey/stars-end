@@ -34,6 +34,12 @@ export interface PageDriver {
   type(text: string): Promise<void>;
   press(keys: KeySpec[]): Promise<void>;
   clearInput(center?: { x: number; y: number }): Promise<void>;
+  /**
+   * Current text of the editable field at `center` (or the focused element).
+   * `null` when no editable field could be resolved — used to verify that an
+   * `input` action actually landed.
+   */
+  readEditableValue(center?: { x: number; y: number }): Promise<string | null>;
 
   waitForSettle(): Promise<void>;
   waitForDomQuiet(opt?: { quietMs?: number; timeoutMs?: number }): Promise<void>;

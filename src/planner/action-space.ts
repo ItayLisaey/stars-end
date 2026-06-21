@@ -4,6 +4,7 @@
  * no `_def` reflection.
  */
 import { z } from "zod";
+import { verifyInputLanded } from "../driver/input-verify.js";
 import type { PageDriver } from "../driver/types.js";
 import { parseHotkey } from "../driver/keyboard.js";
 import type { Point, Size } from "../types.js";
@@ -147,8 +148,16 @@ export const WEB_ACTIONS: ActionDef[] = [
       } else if (ctx.point) {
         await ctx.driver.tap(ctx.point.x, ctx.point.y);
       }
-      if (mode !== "clear") await ctx.driver.type(String(param.value));
-      await ctx.driver.waitForSettle();
+      if (mode !== "clear") {
+        const value = String(param.value);
+        await ctx.driver.type(value);
+        await ctx.driver.waitForSettle();
+        // verify the text actually landed (focus may never reach a rich/
+        // contenteditable composer); throws InputVerificationError if empty.
+        await verifyInputLanded(ctx.driver, value, ctx.point);
+      } else {
+        await ctx.driver.waitForSettle();
+      }
     },
   },
   {

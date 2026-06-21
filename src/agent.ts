@@ -6,6 +6,7 @@ import type { Page } from "playwright";
 import type { z } from "zod";
 import { LocateCache, type CacheMode } from "./cache/locate-cache.js";
 import { PlaywrightDriver } from "./driver/playwright-driver.js";
+import { verifyInputLanded } from "./driver/input-verify.js";
 import { parseHotkey } from "./driver/keyboard.js";
 import type { PageDriver } from "./driver/types.js";
 import { resolveXpathToPoint } from "./extractor/xpath.injected.js";
@@ -154,8 +155,14 @@ export class Agent {
     } else if (center) {
       await this.driver.tap(center.x, center.y);
     }
-    if (mode !== "clear") await this.driver.type(String(value));
-    await this.driver.waitForSettle();
+    if (mode !== "clear") {
+      const text = String(value);
+      await this.driver.type(text);
+      await this.driver.waitForSettle();
+      await verifyInputLanded(this.driver, text, center);
+    } else {
+      await this.driver.waitForSettle();
+    }
     this.trace.record("action", { actionType: "input", prompt });
   }
 
@@ -242,6 +249,9 @@ export class Agent {
         this.trace.record("plan", {
           actionType: info.type,
           modelThought: info.thought,
+          ok: info.ok,
+          stateChanged: info.stateChanged,
+          error: info.error,
         }),
     });
     return result;
