@@ -11,6 +11,13 @@ what's on screen, and can run an autonomous planning loop to accomplish a goal.
 Drop it into your existing Playwright e2e suite to write resilient, intent-based
 tests instead of brittle selectors.
 
+Two things it's good at:
+
+- **e2e testing**: replace brittle selectors with intent; `assert` and `waitFor`
+  on what's actually on screen.
+- **browser automation**: hand it a goal and let the agent loop plan, act, and
+  verify in a `while`-loop until the task is done, no step-by-step scripting.
+
 Visual grounding is powered by Google's Gemini models through the
 [Vercel AI SDK](https://sdk.vercel.ai); the model layer is abstracted, so other
 providers can be slotted in.
