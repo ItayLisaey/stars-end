@@ -23,10 +23,12 @@ const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>
                 border: 1px solid #ccc; }
   #good { top: 100px; }
   #bad  { top: 180px; }
+  #pre  { position: absolute; left: 40px; top: 260px; width: 240px; height: 40px; border: 1px solid #ccc; }
 </style></head><body>
   <input id="email" placeholder="email" />
   <div id="good" contenteditable="true"></div>
   <div id="bad" contenteditable="true"></div>
+  <div id="pre" contenteditable="true">hello</div>
   <script>
     // The bad composer manages its own focus and breaks ours: blocking mousedown
     // prevents the click from moving focus into the field.
@@ -77,6 +79,15 @@ describe("Input verifies text landed", () => {
 
   it("does not verify (and does not throw) on a clear", async () => {
     await expect(Input.run(ctxAt(160, 200), { value: "", mode: "clear" })).resolves.toBeUndefined();
+  });
+
+  it("append (typeOnly) mode preserves existing content — no select-all wipe", async () => {
+    // replace mode issues Ctrl+A; append/typeOnly must NOT, or it would select
+    // and replace the field's existing text (or the whole page if unfocused).
+    await Input.run(ctxAt(160, 280), { value: " world", mode: "typeOnly" });
+    const text = await page.locator("#pre").textContent();
+    expect(text).toContain("hello"); // original survived
+    expect(text).toContain("world"); // new text landed
   });
 
   it("driver.readEditableValue reads a focused input back", async () => {
