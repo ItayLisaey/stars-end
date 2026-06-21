@@ -2,6 +2,7 @@
  * act() planning loop.
  */
 import type { LocateCache } from "../cache/locate-cache.js";
+import { parseHotkey } from "../driver/keyboard.js";
 import type { PageDriver } from "../driver/types.js";
 import {
   ActionFailedError,
@@ -85,6 +86,7 @@ export async function act(
   let prevSig: string | undefined; // signature of the previous executed action
   let repeatCount = 0; // consecutive same-action steps with no screen change
   let staleCount = 0; // consecutive steps (any action) with no screen change
+  let escapeRecoveryTried = false; // dismissed a blocking overlay via Escape this episode
 
   // a step's trace is emitted on the NEXT iteration, once we have the post-step
   // screenshot hash to decide `stateChanged` — avoids a second screenshot/step.
@@ -138,6 +140,21 @@ export async function act(
     if (screenUnchanged) {
       staleCount++;
       if (prevSig !== undefined && sig === prevSig) {
+        // An unexpected dialog/overlay is up and the repeated action isn't
+        // landing — a stray click likely tripped a guard, and taps on its
+        // dismiss control keep missing. Try a deterministic Escape dismissal
+        // ONCE before spending the no-progress budget; coordinate-free, so it
+        // sidesteps the grounding imprecision that caused the loop.
+        if (ctx.overlay?.present && !escapeRecoveryTried) {
+          escapeRecoveryTried = true;
+          await page.press(parseHotkey("Escape")).catch(() => {});
+          await page.waitForSettle();
+          history.addFeedback(
+            "A blocking dialog/overlay was not dismissed by the repeated action; pressed Escape to recover. Re-read the screen, then continue toward the goal.",
+          );
+          prevHash = hash; // measure Escape's effect next iteration; don't advance the action
+          continue;
+        }
         // (a) repeating the exact same action+target with no effect — the A1
         // livelock; bail fast.
         if (++repeatCount >= MAX_REPEAT) throw new NoProgressError(sig, repeatCount);
@@ -159,6 +176,7 @@ export async function act(
     } else {
       staleCount = 0;
       repeatCount = 0;
+      escapeRecoveryTried = false; // progress made — allow recovery again later
     }
 
     let ok = false;
