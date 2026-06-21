@@ -15,12 +15,26 @@ export interface ElementNode {
   center: [number, number];
 }
 
+/**
+ * A top-layer surface (modal, dialog, popover) currently open over the page.
+ * Surfaced so completion detection can recognize that a NEW surface appeared,
+ * rather than only asking "is the target still visible?" — overlays that dim
+ * but keep the underlying target visible otherwise defeat completion.
+ */
+export interface OverlaySurface {
+  present: boolean;
+  /** short, human-readable hint, e.g. 'a modal dialog' */
+  description?: string;
+}
+
 export interface UIContext {
   /** 'data:image/jpeg;base64,...' — image px == content px (no padding for Gemini) */
   screenshotDataUrl: string;
   size: { width: number; height: number }; // image px
   dpr: number;
   elements?: ElementNode[]; // markup tier only
+  /** a top-layer modal/dialog/popover open over the page, if any */
+  overlay?: OverlaySurface;
 }
 
 export interface LocateModelResult {
@@ -50,5 +64,7 @@ export interface ModelTier {
     goal: string,
     history: Step[],
     actionSpace: ActionDef[],
+    /** errors / no-progress nudges surfaced from the previous step(s) */
+    feedback?: string[],
   ): Promise<PlanModelResult>;
 }

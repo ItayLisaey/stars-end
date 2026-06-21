@@ -5,6 +5,7 @@
 import type { Page } from "playwright";
 import type { Size } from "../types.js";
 import { DOM_QUIET_DEFAULTS, domQuietBrowserFn } from "./dom-quiet.js";
+import { readEditableValueAtPoint } from "./editable-value.injected.js";
 import type { KeySpec } from "./keyboard.js";
 import type { PageDriver, Screenshot, ScrollEdge } from "./types.js";
 
@@ -155,6 +156,10 @@ export class PlaywrightDriver implements PageDriver {
     await this.page.keyboard.press("a");
     await this.page.keyboard.up(modifier);
     await this.page.keyboard.press("Backspace");
+  }
+
+  async readEditableValue(center?: { x: number; y: number }): Promise<string | null> {
+    return this.evaluate<string | null>(readEditableValueAtPoint, center ?? null).catch(() => null);
   }
 
   async waitForSettle(): Promise<void> {

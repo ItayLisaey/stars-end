@@ -44,11 +44,12 @@ function makeTier(script: PlanModelResult[]): { tier: ModelTier; locateCalls: ()
     },
     async locate(ctx: UIContext) {
       locateCalls++;
-      // #cart center CSS (120,80) -> image px = *dpr
-      const cx = 120 * ctx.dpr;
-      const cy = 80 * ctx.dpr;
+      // #cart is CSS rect (40,60)-(200,100); return it as an image-px bbox so the
+      // center is (120,80) CSS and the box is button-sized (not a "small" target
+      // that would auto-trigger deep-locate).
+      const d = ctx.dpr;
       return {
-        bbox: [cx - 2, cy - 2, cx + 2, cy + 2] as [number, number, number, number],
+        bbox: [40 * d, 60 * d, 200 * d, 100 * d] as [number, number, number, number],
         raw: {},
       };
     },

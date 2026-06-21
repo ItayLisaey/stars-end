@@ -17,6 +17,10 @@ export interface TraceEntry {
   modelThought?: string;
   cacheHit?: boolean;
   error?: string;
+  /** action outcome (act() planning steps): ran without throwing */
+  ok?: boolean;
+  /** action outcome: the screenshot changed after the action */
+  stateChanged?: boolean;
 }
 
 export type TraceSink = (entry: TraceEntry) => void;

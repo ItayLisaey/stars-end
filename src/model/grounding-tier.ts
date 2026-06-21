@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { PageDriver } from "../driver/types.js";
 import { adaptModelCoordinatesToPixelBbox } from "../geometry/coordinates.js";
 import { locateSystemPrompt } from "../insight/prompts.js";
+import { detectTopLayerSurface, type TopLayerResult } from "../insight/top-layer.injected.js";
 import type { ActionDef } from "../planner/action-space.js";
 import { parsePlan } from "../planner/parse.js";
 import { planningSystemPrompt, planningUserPrompt } from "../planner/prompt.js";
@@ -23,10 +24,14 @@ export const groundingTier: ModelTier = {
 
   async buildContext(page: PageDriver): Promise<UIContext> {
     const shot = await page.screenshot();
+    const overlay = await page
+      .evaluate<TopLayerResult>(detectTopLayerSurface)
+      .catch(() => ({ present: false }) as TopLayerResult);
     return {
       screenshotDataUrl: shot.base64,
       size: { width: shot.width, height: shot.height },
       dpr: shot.dpr,
+      overlay: { present: overlay.present, description: overlay.description },
     };
   },
 
@@ -49,10 +54,11 @@ export const groundingTier: ModelTier = {
     goal: string,
     history: Step[],
     actionSpace: ActionDef[],
+    feedback?: string[],
   ): Promise<PlanModelResult> {
     const { text } = await callText({
       system: planningSystemPrompt(actionSpace),
-      userText: planningUserPrompt(goal, history),
+      userText: planningUserPrompt(goal, history, { feedback, overlay: ctx.overlay }),
       imageDataUrl: ctx.screenshotDataUrl,
     });
     const parsed = parsePlan(text);
