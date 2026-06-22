@@ -4,7 +4,6 @@
 import type { LocateCache } from "../cache/locate-cache.js";
 import { parseHotkey } from "../driver/keyboard.js";
 import type { PageDriver } from "../driver/types.js";
-import { check } from "../insight/assert.js";
 import {
   ActionFailedError,
   getSafeErrorMessage,
@@ -100,29 +99,28 @@ export async function act(
     pending = undefined;
   };
 
-  // Last-resort completion check before giving up. Some planners (observed on
-  // gemini-3.5-flash) stop emitting a valid <complete> once the goal is met —
-  // they return empty or off-task text — so the loop would throw even though the
-  // task is done. If we've made progress, ask an independent yes/no check (a
-  // different, constrained call than the glitching planner) whether the goal is
-  // satisfied, and succeed if so. Only rescues genuinely-done tasks.
+  // Independent yes/no completion check via the tier (a different, constrained
+  // call than the planner). Tiers that don't implement it (lightweight/fake)
+  // make the loop skip the check entirely — `onError` is the assumed answer both
+  // when the capability is absent and when the check itself throws.
+  const checkGoalSatisfied = async (onError: boolean): Promise<boolean> => {
+    if (!tier.isGoalSatisfied) return onError;
+    try {
+      return await tier.isGoalSatisfied(page, goal);
+    } catch {
+      return onError;
+    }
+  };
+
+  // Last-resort check before GIVING UP: some planners (observed on
+  // gemini-3.5-flash) stop emitting a valid <complete> once the goal is met
+  // (empty/off-task text), so the loop would throw even though the task is done.
+  // If we've made progress and the goal is satisfied, succeed. Errs toward
+  // throwing (onError=false) so an unverifiable state still surfaces.
   const inferComplete = async (): Promise<ActionResult | null> => {
     if (history.steps.length === 0) return null;
-    try {
-      const r = await check(
-        page,
-        tier,
-        `The user's goal has been accomplished and the result is visible on the current screen: "${goal}".`,
-      );
-      if (r.pass) {
-        return {
-          success: true,
-          message: `goal satisfied (inferred): ${goal}`,
-          steps: history.steps,
-        };
-      }
-    } catch {
-      // fall through to the original error
+    if (await checkGoalSatisfied(false)) {
+      return { success: true, message: `goal satisfied (inferred): ${goal}`, steps: history.steps };
     }
     return null;
   };
@@ -143,11 +141,20 @@ export async function act(
 
     if (plan.complete) {
       if (!plan.complete.success) throw new ActionFailedError(plan.complete.message);
-      return {
-        success: true,
-        message: plan.complete.message,
-        steps: history.steps,
-      };
+      // Verify a claimed success before trusting it. Some planners declare
+      // completion prematurely — even while their own thought lists remaining
+      // steps. Confirm against the screen with an independent check; if it isn't
+      // actually satisfied, reject the claim and keep going (bounded by
+      // replanLimit). Errs toward trusting the planner if the check can't run.
+      if (history.steps.length === 0 || (await checkGoalSatisfied(true))) {
+        return { success: true, message: plan.complete.message, steps: history.steps };
+      }
+      history.addFeedback(
+        `You reported the task complete, but the goal is NOT yet satisfied on screen. Do not claim completion — perform the next concrete action toward: ${goal}.`,
+      );
+      if (++replanCount > replanLimit) throw new ReplanLimitError();
+      prevHash = hash;
+      continue;
     }
 
     if (!plan.action) {
@@ -200,8 +207,14 @@ export async function act(
           continue;
         }
         // (a) repeating the exact same action+target with no effect — the A1
-        // livelock; bail fast.
-        if (++repeatCount >= MAX_REPEAT) throw new NoProgressError(sig, repeatCount);
+        // livelock; bail fast. But first check whether the goal is already done:
+        // a planner that can't emit <complete> keeps re-tapping a target it has
+        // already actioned (e.g. an option it already selected).
+        if (++repeatCount >= MAX_REPEAT) {
+          const done = await inferComplete();
+          if (done) return done;
+          throw new NoProgressError(sig, repeatCount);
+        }
         history.addFeedback(
           `The previous "${sig}" action did not change the screen. The target may be obscured, a no-op, or already actioned — do not repeat it; re-ground and try a different target or approach.`,
         );
@@ -215,6 +228,8 @@ export async function act(
       }
       // (b) screen stuck across many steps regardless of which action — backstop.
       if (staleCount >= MAX_STALE) {
+        const done = await inferComplete();
+        if (done) return done;
         throw new NoProgressError("screen unchanged across multiple steps", staleCount);
       }
     } else {

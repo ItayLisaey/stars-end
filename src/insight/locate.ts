@@ -19,11 +19,13 @@ export interface LocateOpt {
 }
 
 /**
- * Below this CSS-px edge a target counts as "small" (icon-only buttons, tight
- * controls). Grounding precision drops on these, so we auto-engage the
- * crop+upscale deep-locate pass before trusting the coarse hit.
+ * Below this CSS-px edge a target counts as "small" (icon buttons, swatches,
+ * dense controls, compact steppers ~24–30px). Grounding precision drops on
+ * these, so we auto-engage the crop+upscale deep-locate pass before trusting the
+ * coarse hit. Kept just above icon/swatch sizes but below typical list-row /
+ * button heights (~36–44px) so normal controls don't pay for a second pass.
  */
-const SMALL_TARGET_CSS_PX = 28;
+const SMALL_TARGET_CSS_PX = 32;
 
 function isSmallTarget(bbox: PixelBbox, dpr: number): boolean {
   const w = (bbox[2] - bbox[0]) / dpr;

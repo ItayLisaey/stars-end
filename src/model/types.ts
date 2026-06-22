@@ -82,4 +82,11 @@ export interface ModelTier {
     /** errors / no-progress nudges surfaced from the previous step(s) */
     feedback?: string[],
   ): Promise<PlanModelResult>;
+  /**
+   * Independent yes/no: is `goal` satisfied on the current screen? Used by the
+   * act() loop to verify claimed completions and to infer completion when the
+   * planner won't emit one. Optional so lightweight/fake tiers can omit it (the
+   * loop then skips the check).
+   */
+  isGoalSatisfied?(page: PageDriver, goal: string): Promise<boolean>;
 }

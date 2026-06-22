@@ -4,6 +4,7 @@
 import { z } from "zod";
 import type { PageDriver } from "../driver/types.js";
 import { adaptModelCoordinatesToPixelBbox } from "../geometry/coordinates.js";
+import { check } from "../insight/assert.js";
 import { locateSystemPrompt } from "../insight/prompts.js";
 import { detectOpenListbox, type OpenListResult } from "../insight/open-listbox.injected.js";
 import { detectTopLayerSurface, type TopLayerResult } from "../insight/top-layer.injected.js";
@@ -27,7 +28,7 @@ const LocateResponseSchema = z.object({
  * same model.
  */
 export function createGroundingTier(model?: string): ModelTier {
-  return {
+  const tier: ModelTier = {
     kind: "grounding",
     model,
 
@@ -88,7 +89,17 @@ export function createGroundingTier(model?: string): ModelTier {
         error: parsed.error,
       };
     },
+
+    async isGoalSatisfied(page: PageDriver, goal: string): Promise<boolean> {
+      const r = await check(
+        page,
+        tier,
+        `The user's goal is fully accomplished and the result is visible on the current screen: "${goal}".`,
+      );
+      return r.pass;
+    },
   };
+  return tier;
 }
 
 /** Default grounding tier on the library default model. */

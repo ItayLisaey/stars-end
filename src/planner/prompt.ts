@@ -29,7 +29,8 @@ const WISDOM = `## Rules (follow exactly)
 - Surface-aware completion: completion is NOT "is the target still visible?". If your goal was to open/show/select/expand something and a NEW modal, dialog, detail panel, sheet, or popover is now open — even one that only dims but keeps the page visible behind it — the task is DONE. Return <complete success="true">; do NOT re-click the underlying element you can still see behind the overlay.
 - First/Nth item: when told to use "the first / Nth / last" item, ignore add/new/empty/placeholder tiles (e.g. a "+ Add" or "New" card) and count only real content items. The visually top-left tile is often a placeholder, not the first item.
 - Unexpected popover recovery: if a tap opened a menu/popover/dialog you did NOT intend (and it now blocks your target), dismiss it FIRST — press Escape or click outside — then retry the intended target. Do not keep tapping behind it.
-- No-progress: if feedback says your last action did not change the screen, do NOT repeat the same action on the same target. Re-ground (the target may be obscured, offscreen, or a no-op) and choose a different target or approach.`;
+- No-progress: if feedback says your last action did not change the screen, do NOT repeat the same action on the same target. Re-ground (the target may be obscured, offscreen, or a no-op) and choose a different target or approach.
+- Completion honesty (CRITICAL): only output <complete success="true"> when EVERY requested sub-task is done and its result is visible on the current screenshot. Never complete while your own thought still lists remaining/next steps, and never assume a prior action worked — confirm the expected new state actually appeared (e.g. the next wizard step, the updated value) before declaring done.`;
 
 const ENVELOPE = `## Output format (XML)
 Respond with exactly one step. For an action:
