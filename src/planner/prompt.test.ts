@@ -28,6 +28,11 @@ describe("planningSystemPrompt rules", () => {
   it("warns against repeating an action that changed nothing", () => {
     expect(sys).toMatch(/No-progress/i);
   });
+
+  it("tells the planner to operate an OPEN dropdown by its options, not the closed trigger", () => {
+    expect(sys).toMatch(/OPEN dropdown by its options/i);
+    expect(sys).toMatch(/option labelled/i);
+  });
 });
 
 describe("planningUserPrompt rendering", () => {
@@ -56,5 +61,19 @@ describe("planningUserPrompt rendering", () => {
   it("does not show the overlay note when no overlay is present", () => {
     const p = planningUserPrompt("x", [], { overlay: { present: false } });
     expect(p).not.toMatch(/Current overlay/);
+  });
+
+  it("renders the open-dropdown note (with option count) when a list is open", () => {
+    const p = planningUserPrompt("set the month", [], {
+      openList: { open: true, optionCount: 12 },
+    });
+    expect(p).toMatch(/Open dropdown/);
+    expect(p).toMatch(/12 options/);
+    expect(p).toMatch(/by its label in this open list/);
+  });
+
+  it("omits the open-dropdown note when no list is open", () => {
+    const p = planningUserPrompt("x", [], { openList: { open: false } });
+    expect(p).not.toMatch(/Open dropdown/);
   });
 });

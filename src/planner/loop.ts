@@ -145,7 +145,11 @@ export async function act(
         // dismiss control keep missing. Try a deterministic Escape dismissal
         // ONCE before spending the no-progress budget; coordinate-free, so it
         // sidesteps the grounding imprecision that caused the loop.
-        if (ctx.overlay?.present && !escapeRecoveryTried) {
+        //
+        // Skip when a dropdown/combobox is open: that listbox is almost
+        // certainly what the agent is operating, and Escape would close the very
+        // list it needs to pick from.
+        if (ctx.overlay?.present && !ctx.openList?.open && !escapeRecoveryTried) {
           escapeRecoveryTried = true;
           await page.press(parseHotkey("Escape")).catch(() => {});
           await page.waitForSettle();

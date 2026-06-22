@@ -27,6 +27,17 @@ export interface OverlaySurface {
   description?: string;
 }
 
+/**
+ * A custom dropdown/combobox currently OPEN, showing its option list. Surfaced
+ * so the planner locates `role="option"` items in the open surface instead of
+ * re-describing the closed trigger by a value it no longer displays.
+ */
+export interface OpenListState {
+  open: boolean;
+  /** number of visible options in the open surface */
+  optionCount?: number;
+}
+
 export interface UIContext {
   /** 'data:image/jpeg;base64,...' — image px == content px (no padding for Gemini) */
   screenshotDataUrl: string;
@@ -35,6 +46,8 @@ export interface UIContext {
   elements?: ElementNode[]; // markup tier only
   /** a top-layer modal/dialog/popover open over the page, if any */
   overlay?: OverlaySurface;
+  /** a dropdown/combobox listbox currently open, if any */
+  openList?: OpenListState;
 }
 
 export interface LocateModelResult {

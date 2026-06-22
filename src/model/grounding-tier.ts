@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { PageDriver } from "../driver/types.js";
 import { adaptModelCoordinatesToPixelBbox } from "../geometry/coordinates.js";
 import { locateSystemPrompt } from "../insight/prompts.js";
+import { detectOpenListbox, type OpenListResult } from "../insight/open-listbox.injected.js";
 import { detectTopLayerSurface, type TopLayerResult } from "../insight/top-layer.injected.js";
 import type { ActionDef } from "../planner/action-space.js";
 import { parsePlan } from "../planner/parse.js";
@@ -27,11 +28,15 @@ export const groundingTier: ModelTier = {
     const overlay = await page
       .evaluate<TopLayerResult>(detectTopLayerSurface)
       .catch(() => ({ present: false }) as TopLayerResult);
+    const openList = await page
+      .evaluate<OpenListResult>(detectOpenListbox)
+      .catch(() => ({ open: false }) as OpenListResult);
     return {
       screenshotDataUrl: shot.base64,
       size: { width: shot.width, height: shot.height },
       dpr: shot.dpr,
       overlay: { present: overlay.present, description: overlay.description },
+      openList: { open: openList.open, optionCount: openList.optionCount },
     };
   },
 
@@ -58,7 +63,11 @@ export const groundingTier: ModelTier = {
   ): Promise<PlanModelResult> {
     const { text } = await callText({
       system: planningSystemPrompt(actionSpace),
-      userText: planningUserPrompt(goal, history, { feedback, overlay: ctx.overlay }),
+      userText: planningUserPrompt(goal, history, {
+        feedback,
+        overlay: ctx.overlay,
+        openList: ctx.openList,
+      }),
       imageDataUrl: ctx.screenshotDataUrl,
     });
     const parsed = parsePlan(text);

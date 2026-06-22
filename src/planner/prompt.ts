@@ -3,7 +3,7 @@
  * descriptions/samples (NOT Zod `_def` reflection), then the rules and output
  * format are appended.
  */
-import type { OverlaySurface } from "../model/types.js";
+import type { OpenListState, OverlaySurface } from "../model/types.js";
 import type { Step } from "../types.js";
 import type { ActionDef } from "./action-space.js";
 
@@ -24,6 +24,7 @@ const WISDOM = `## Rules (follow exactly)
 - Durable-change completion: for create/edit/update/delete/save/send/submit/apply/publish intents, do not stop at an unsaved draft — drive through Save/Confirm/OK/Submit/Apply. If the user only asked for an intermediate UI state, stop there.
 - Do NOT re-verify input after typing (CRITICAL): if the previous step was an Input and the field is non-empty, treat it as success. Do NOT clear / re-Input / "fix" based on visible text — clipping, scroll, narrow fields, and selection make it look wrong. Retry only if the field is clearly empty or there is an explicit error.
 - Open dropdown/listbox: open the control, then scroll the OPEN LIST in small 50–120px increments with an explicit distance; never omit distance. Tap the option once visible.
+- Operate an OPEN dropdown by its options, not the closed trigger (CRITICAL): once a dropdown/combobox is open, the screen shows a LIST of options — the trigger no longer shows its old value. Locate the OPTION by its label in the open list (e.g. "the option labelled <value> in the open list"). Do NOT re-locate "the dropdown showing <old value>" — that closed-state description is not on screen and will miss. If the wanted option isn't visible, scroll the open list to it first.
 - Do not assert while a spinner/skeleton/progress bar is visible — wait for load.
 - Surface-aware completion: completion is NOT "is the target still visible?". If your goal was to open/show/select/expand something and a NEW modal, dialog, detail panel, sheet, or popover is now open — even one that only dims but keeps the page visible behind it — the task is DONE. Return <complete success="true">; do NOT re-click the underlying element you can still see behind the overlay.
 - First/Nth item: when told to use "the first / Nth / last" item, ignore add/new/empty/placeholder tiles (e.g. a "+ Add" or "New" card) and count only real content items. The visually top-left tile is often a placeholder, not the first item.
@@ -59,6 +60,8 @@ export interface PlanningContext {
   feedback?: string[];
   /** a top-layer modal/dialog/popover currently open over the page */
   overlay?: OverlaySurface;
+  /** a dropdown/combobox listbox currently open, if any */
+  openList?: OpenListState;
 }
 
 export function planningUserPrompt(goal: string, history: Step[], extra?: PlanningContext): string {
@@ -78,6 +81,12 @@ export function planningUserPrompt(goal: string, history: Step[], extra?: Planni
     ? `\n\n## Current overlay\n${extra.overlay.description ?? "an overlay"} is open over the page. If opening it was the goal, you are likely done.`
     : "";
 
+  const openListNote = extra?.openList?.open
+    ? `\n\n## Open dropdown\nA dropdown/combobox is open${
+        extra.openList.optionCount ? ` showing ${extra.openList.optionCount} options` : ""
+      }. Locate the OPTION by its label in this open list — not the closed trigger by its previous value. Scroll the open list if the wanted option is not visible.`
+    : "";
+
   const feedbackNote =
     extra?.feedback && extra.feedback.length > 0
       ? `\n\n## Feedback from previous step(s)\n${extra.feedback.map((f) => `- ${f}`).join("\n")}`
@@ -87,7 +96,7 @@ export function planningUserPrompt(goal: string, history: Step[], extra?: Planni
 ${goal}
 
 ## Previous actions
-${logs}${overlayNote}${feedbackNote}
+${logs}${overlayNote}${openListNote}${feedbackNote}
 
 Decide the single next action (or completion) now.`;
 }
