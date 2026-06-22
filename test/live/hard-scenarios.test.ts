@@ -84,7 +84,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       const done = await page.$eval("#done", (d) => d.textContent ?? "");
       return { success: r.success, done };
     });
-    // eslint-disable-next-line no-console
     console.log("T1:", out);
     expect(out.done).toContain("name=Ada Lovelace");
     expect(out.done).toContain("plan=Pro");
@@ -115,7 +114,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       const other = await page.$eval("#other", (e: any) => e.value);
       return { success: r.success, checked, other };
     });
-    // eslint-disable-next-line no-console
     console.log("T2:", out);
     expect(out.checked).toBe("Other");
     expect(out.other.toLowerCase()).toContain("colleague");
@@ -136,7 +134,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       );
       return { success: r.success, log: await page.$eval("#log", (d) => d.textContent ?? "") };
     });
-    // eslint-disable-next-line no-console
     console.log("T3:", out);
     expect(out.log).toBe("green");
   });
@@ -155,7 +152,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       );
       return { success: r.success, val: await page.$eval("#val", (d) => d.textContent ?? "") };
     });
-    // eslint-disable-next-line no-console
     console.log("T4:", out);
     expect(out.val).toBe("6");
   });
@@ -187,7 +183,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       );
       return { success: r.success, st };
     });
-    // eslint-disable-next-line no-console
     console.log("T5:", out);
     expect(out.st).toEqual({
       email: "true",
@@ -226,7 +221,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       const emailpref = await page.$eval("#emailpref", (e) => e.classList.contains("on"));
       return { success: r.success, twofa, emailpref };
     });
-    // eslint-disable-next-line no-console
     console.log("T6:", out);
     expect(out.twofa).toBe(true);
     expect(out.emailpref).toBe(false); // didn't toggle the visible decoy
@@ -251,7 +245,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       );
       return { success: r.success, sel: await page.$eval("#selected", (d) => d.textContent ?? "") };
     });
-    // eslint-disable-next-line no-console
     console.log("T7:", out);
     expect(out.sel).toBe("SEL:Mango");
   });
@@ -282,7 +275,6 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       const dlgOpen = await page.$eval("#dlg", (e) => e.classList.contains("on"));
       return { success: r.success, status, dlgOpen };
     });
-    // eslint-disable-next-line no-console
     console.log("T8:", out);
     expect(out.status).toContain("cancelled"); // actually opened then cancelled
     expect(out.status).not.toContain("deleted"); // did NOT delete

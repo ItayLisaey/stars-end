@@ -34,6 +34,7 @@ export function detectOpenListbox(): OpenListResult {
     return true;
   };
 
+  // oxlint-disable-next-line unicorn/consistent-function-scoping
   const countVisibleOptions = (root: ParentNode): number => {
     let n = 0;
     for (const opt of Array.from(root.querySelectorAll('[role="option"], [role="menuitem"]'))) {
@@ -50,10 +51,13 @@ export function detectOpenListbox(): OpenListResult {
     if (count > 0) return { open: true, optionCount: count };
   }
 
-  // 2. an expanded combobox trigger — its popup may be portalled elsewhere, so
-  // fall back to a document-wide visible-option count.
+  // 2. an expanded combobox/dropdown trigger — its popup may be portalled
+  // elsewhere, so fall back to a document-wide visible-option count. Scoped to
+  // combobox/button triggers so expanded accordions/disclosures don't match.
   const expanded = Array.from(
-    document.querySelectorAll('[role="combobox"][aria-expanded="true"], [aria-expanded="true"]'),
+    document.querySelectorAll(
+      '[role="combobox"][aria-expanded="true"], button[aria-expanded="true"]',
+    ),
   ).filter((el) => isVisible(el));
   if (expanded.length > 0) {
     const count = countVisibleOptions(document);

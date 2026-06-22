@@ -152,6 +152,10 @@ export async function act(
       history.addFeedback(
         `You reported the task complete, but the goal is NOT yet satisfied on screen. Do not claim completion — perform the next concrete action toward: ${goal}.`,
       );
+      // a rejected completion isn't a stuck screen — don't let it feed the
+      // no-progress counters; bound the retries via replanLimit instead.
+      staleCount = 0;
+      repeatCount = 0;
       if (++replanCount > replanLimit) throw new ReplanLimitError();
       prevHash = hash;
       continue;

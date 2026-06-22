@@ -65,7 +65,6 @@ const HARD_HTML = `<!doctype html><html><head><meta charset="utf-8"><style>
       trigger.textContent = opt.textContent;
       trigger.setAttribute('aria-expanded', 'false');
       lb.hidden = true;
-      window.__picked = opt.textContent;
     });
   </script>
 </body></html>`;
@@ -115,15 +114,12 @@ describe.skipIf(!HAS_KEY || !process.env.MEASURE)("dropdown flake rate (live Gem
       } finally {
         await page?.close();
       }
-      // eslint-disable-next-line no-console
       console.log(
         `[run ${i + 1}/${RUNS}] target=${target} outcome=${outcome} passed-so-far=${passed}`,
       );
     }
 
-    // eslint-disable-next-line no-console
     console.log(`FLAKE_RESULT runs=${RUNS} passed=${passed} failed=${RUNS - passed}`);
-    // eslint-disable-next-line no-console
     console.log(`FLAKE_FAILURES ${JSON.stringify(failures)}`);
   }, 1_800_000);
 });
