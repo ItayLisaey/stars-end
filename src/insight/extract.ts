@@ -68,6 +68,7 @@ export async function query<T>(
     errors: z.array(z.string()).optional(),
   });
   const { object } = await callObject({
+    model: tier.model,
     schema: envelope,
     system: EXTRACT_SYSTEM_PROMPT,
     userText: `<DATA_DEMAND>\n${demand}\n</DATA_DEMAND>`,

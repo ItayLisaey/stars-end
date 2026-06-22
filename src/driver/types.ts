@@ -27,6 +27,15 @@ export interface PageDriver {
     y: number,
     opt?: { button?: "left" | "right" | "middle"; count?: number },
   ): Promise<void>;
+  /**
+   * Click an element by xpath via Playwright's actionability-checked click
+   * (auto-wait, scroll-into-view, hit-test). Returns false if it could not click
+   * (not found / obscured / timed out) so the caller can fall back to `tap`.
+   */
+  clickXpath(
+    xpath: string,
+    opt?: { button?: "left" | "right" | "middle"; count?: number },
+  ): Promise<boolean>;
   move(x: number, y: number): Promise<void>;
   wheel(deltaX: number, deltaY: number, from?: { x: number; y: number }): Promise<void>;
   scrollTo(edge: ScrollEdge, from?: { x: number; y: number }): Promise<void>;

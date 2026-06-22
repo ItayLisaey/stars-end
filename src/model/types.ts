@@ -27,6 +27,17 @@ export interface OverlaySurface {
   description?: string;
 }
 
+/**
+ * A custom dropdown/combobox currently OPEN, showing its option list. Surfaced
+ * so the planner locates `role="option"` items in the open surface instead of
+ * re-describing the closed trigger by a value it no longer displays.
+ */
+export interface OpenListState {
+  open: boolean;
+  /** number of visible options in the open surface */
+  optionCount?: number;
+}
+
 export interface UIContext {
   /** 'data:image/jpeg;base64,...' — image px == content px (no padding for Gemini) */
   screenshotDataUrl: string;
@@ -35,6 +46,8 @@ export interface UIContext {
   elements?: ElementNode[]; // markup tier only
   /** a top-layer modal/dialog/popover open over the page, if any */
   overlay?: OverlaySurface;
+  /** a dropdown/combobox listbox currently open, if any */
+  openList?: OpenListState;
 }
 
 export interface LocateModelResult {
@@ -52,6 +65,8 @@ export interface PlanModelResult {
 
 export interface ModelTier {
   readonly kind: "grounding" | "markup";
+  /** model id every call on this tier uses; undefined => library default */
+  readonly model?: string;
   buildContext(page: PageDriver): Promise<UIContext>;
   /** returns an inclusive pixel bbox in content coordinate space */
   locate(
@@ -67,4 +82,11 @@ export interface ModelTier {
     /** errors / no-progress nudges surfaced from the previous step(s) */
     feedback?: string[],
   ): Promise<PlanModelResult>;
+  /**
+   * Independent yes/no: is `goal` satisfied on the current screen? Used by the
+   * act() loop to verify claimed completions and to infer completion when the
+   * planner won't emit one. Optional so lightweight/fake tiers can omit it (the
+   * loop then skips the check).
+   */
+  isGoalSatisfied?(page: PageDriver, goal: string): Promise<boolean>;
 }

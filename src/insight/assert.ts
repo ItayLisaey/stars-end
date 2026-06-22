@@ -25,6 +25,7 @@ export async function check(
 ): Promise<CheckResult> {
   const ctx = context ?? (await tier.buildContext(page));
   const { object } = await callObject({
+    model: tier.model,
     schema: AssertSchema,
     system: ASSERT_SYSTEM_PROMPT,
     userText: `Assert whether this is true based on the current screenshot: ${assertion}`,

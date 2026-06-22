@@ -6,6 +6,7 @@ import type { Page } from "playwright";
 import type { z } from "zod";
 import { LocateCache, type CacheMode } from "./cache/locate-cache.js";
 import { PlaywrightDriver } from "./driver/playwright-driver.js";
+import { clickTarget } from "./driver/click-target.js";
 import { verifyInputLanded } from "./driver/input-verify.js";
 import { parseHotkey } from "./driver/keyboard.js";
 import type { PageDriver } from "./driver/types.js";
@@ -18,7 +19,7 @@ import {
 } from "./insight/assert.js";
 import { query as queryInsight } from "./insight/extract.js";
 import { locate as locateInsight, type LocateOpt } from "./insight/locate.js";
-import { groundingTier } from "./model/grounding-tier.js";
+import { createGroundingTier } from "./model/grounding-tier.js";
 import type { ModelTier } from "./model/types.js";
 import { act as actLoop } from "./planner/loop.js";
 import { Trace, type TraceConfig } from "./trace/jsonl-trace.js";
@@ -58,7 +59,7 @@ export class Agent {
     this.driver = new PlaywrightDriver(page, {
       waitForSettleTimeoutMs: opts.waitForNavigationTimeoutMs,
     });
-    this.tier = groundingTier; // 'auto' -> grounding for Gemini
+    this.tier = createGroundingTier(opts.model); // 'auto' -> grounding for Gemini
     if (opts.cache) {
       this.cache = new LocateCache({
         id: opts.cache.id,
@@ -107,14 +108,14 @@ export class Agent {
 
   async tap(prompt: string, opt?: LocateOpt): Promise<void> {
     const { x, y } = await this.resolvePoint(prompt, opt);
-    await this.driver.tap(x, y);
+    await clickTarget(this.driver, { x, y });
     await this.driver.waitForSettle();
     this.trace.record("action", { actionType: "tap", prompt, point: { x, y } });
   }
 
   async rightClick(prompt: string, opt?: LocateOpt): Promise<void> {
     const { x, y } = await this.resolvePoint(prompt, opt);
-    await this.driver.tap(x, y, { button: "right" });
+    await clickTarget(this.driver, { x, y }, { button: "right" });
     await this.driver.waitForSettle();
     this.trace.record("action", {
       actionType: "rightClick",
@@ -125,7 +126,7 @@ export class Agent {
 
   async doubleClick(prompt: string, opt?: LocateOpt): Promise<void> {
     const { x, y } = await this.resolvePoint(prompt, opt);
-    await this.driver.tap(x, y, { count: 2 });
+    await clickTarget(this.driver, { x, y }, { count: 2 });
     await this.driver.waitForSettle();
     this.trace.record("action", {
       actionType: "doubleClick",

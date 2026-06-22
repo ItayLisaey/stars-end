@@ -99,6 +99,32 @@ export async function act(
     pending = undefined;
   };
 
+  // Independent yes/no completion check via the tier (a different, constrained
+  // call than the planner). Tiers that don't implement it (lightweight/fake)
+  // make the loop skip the check entirely — `onError` is the assumed answer both
+  // when the capability is absent and when the check itself throws.
+  const checkGoalSatisfied = async (onError: boolean): Promise<boolean> => {
+    if (!tier.isGoalSatisfied) return onError;
+    try {
+      return await tier.isGoalSatisfied(page, goal);
+    } catch {
+      return onError;
+    }
+  };
+
+  // Last-resort check before GIVING UP: some planners (observed on
+  // gemini-3.5-flash) stop emitting a valid <complete> once the goal is met
+  // (empty/off-task text), so the loop would throw even though the task is done.
+  // If we've made progress and the goal is satisfied, succeed. Errs toward
+  // throwing (onError=false) so an unverifiable state still surfaces.
+  const inferComplete = async (): Promise<ActionResult | null> => {
+    if (history.steps.length === 0) return null;
+    if (await checkGoalSatisfied(false)) {
+      return { success: true, message: `goal satisfied (inferred): ${goal}`, steps: history.steps };
+    }
+    return null;
+  };
+
   for (let step = 0; step < maxSteps; step++) {
     const ctx = await tier.buildContext(page);
     const hash = hashString(ctx.screenshotDataUrl);
@@ -115,17 +141,42 @@ export async function act(
 
     if (plan.complete) {
       if (!plan.complete.success) throw new ActionFailedError(plan.complete.message);
-      return {
-        success: true,
-        message: plan.complete.message,
-        steps: history.steps,
-      };
+      // Verify a claimed success before trusting it. Some planners declare
+      // completion prematurely — even while their own thought lists remaining
+      // steps. Confirm against the screen with an independent check; if it isn't
+      // actually satisfied, reject the claim and keep going (bounded by
+      // replanLimit). Errs toward trusting the planner if the check can't run.
+      if (history.steps.length === 0 || (await checkGoalSatisfied(true))) {
+        return { success: true, message: plan.complete.message, steps: history.steps };
+      }
+      history.addFeedback(
+        `You reported the task complete, but the goal is NOT yet satisfied on screen. Do not claim completion — perform the next concrete action toward: ${goal}.`,
+      );
+      // a rejected completion isn't a stuck screen — don't let it feed the
+      // no-progress counters; bound the retries via replanLimit instead.
+      staleCount = 0;
+      repeatCount = 0;
+      if (++replanCount > replanLimit) throw new ReplanLimitError();
+      prevHash = hash;
+      continue;
     }
 
     if (!plan.action) {
-      // nothing to do and no completion — allow a few replans then bail
-      if (++replanCount > replanLimit) throw new ReplanLimitError();
+      // No action AND no completion — the planner returned an empty/unparseable
+      // response. Nudge it with the exact format + an explicit "complete if
+      // done" so the next prompt differs (a bare retry at temperature 0 repeats
+      // the same blank output).
+      history.addFeedback(
+        'Your previous response did not contain a valid step. Respond with EXACTLY one <action-type> + <action-param-json>, OR — if the goal is already satisfied on screen — <complete success="true">what was accomplished</complete>.',
+      );
+      if (++replanCount > replanLimit) {
+        const done = await inferComplete();
+        if (done) return done;
+        throw new ReplanLimitError();
+      }
       if (screenUnchanged && ++staleCount >= MAX_STALE) {
+        const done = await inferComplete();
+        if (done) return done;
         throw new NoProgressError("no actionable plan", staleCount);
       }
       prevHash = hash;
@@ -145,7 +196,11 @@ export async function act(
         // dismiss control keep missing. Try a deterministic Escape dismissal
         // ONCE before spending the no-progress budget; coordinate-free, so it
         // sidesteps the grounding imprecision that caused the loop.
-        if (ctx.overlay?.present && !escapeRecoveryTried) {
+        //
+        // Skip when a dropdown/combobox is open: that listbox is almost
+        // certainly what the agent is operating, and Escape would close the very
+        // list it needs to pick from.
+        if (ctx.overlay?.present && !ctx.openList?.open && !escapeRecoveryTried) {
           escapeRecoveryTried = true;
           await page.press(parseHotkey("Escape")).catch(() => {});
           await page.waitForSettle();
@@ -156,8 +211,14 @@ export async function act(
           continue;
         }
         // (a) repeating the exact same action+target with no effect — the A1
-        // livelock; bail fast.
-        if (++repeatCount >= MAX_REPEAT) throw new NoProgressError(sig, repeatCount);
+        // livelock; bail fast. But first check whether the goal is already done:
+        // a planner that can't emit <complete> keeps re-tapping a target it has
+        // already actioned (e.g. an option it already selected).
+        if (++repeatCount >= MAX_REPEAT) {
+          const done = await inferComplete();
+          if (done) return done;
+          throw new NoProgressError(sig, repeatCount);
+        }
         history.addFeedback(
           `The previous "${sig}" action did not change the screen. The target may be obscured, a no-op, or already actioned — do not repeat it; re-ground and try a different target or approach.`,
         );
@@ -171,6 +232,8 @@ export async function act(
       }
       // (b) screen stuck across many steps regardless of which action — backstop.
       if (staleCount >= MAX_STALE) {
+        const done = await inferComplete();
+        if (done) return done;
         throw new NoProgressError("screen unchanged across multiple steps", staleCount);
       }
     } else {
@@ -222,5 +285,7 @@ export async function act(
   }
 
   flush(undefined);
+  const done = await inferComplete();
+  if (done) return done;
   throw new MaxStepsError();
 }
