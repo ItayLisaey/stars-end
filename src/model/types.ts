@@ -65,6 +65,8 @@ export interface PlanModelResult {
 
 export interface ModelTier {
   readonly kind: "grounding" | "markup";
+  /** model id every call on this tier uses; undefined => library default */
+  readonly model?: string;
   buildContext(page: PageDriver): Promise<UIContext>;
   /** returns an inclusive pixel bbox in content coordinate space */
   locate(

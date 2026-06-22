@@ -4,6 +4,7 @@
 import type { LocateCache } from "../cache/locate-cache.js";
 import { parseHotkey } from "../driver/keyboard.js";
 import type { PageDriver } from "../driver/types.js";
+import { check } from "../insight/assert.js";
 import {
   ActionFailedError,
   getSafeErrorMessage,
@@ -99,6 +100,33 @@ export async function act(
     pending = undefined;
   };
 
+  // Last-resort completion check before giving up. Some planners (observed on
+  // gemini-3.5-flash) stop emitting a valid <complete> once the goal is met —
+  // they return empty or off-task text — so the loop would throw even though the
+  // task is done. If we've made progress, ask an independent yes/no check (a
+  // different, constrained call than the glitching planner) whether the goal is
+  // satisfied, and succeed if so. Only rescues genuinely-done tasks.
+  const inferComplete = async (): Promise<ActionResult | null> => {
+    if (history.steps.length === 0) return null;
+    try {
+      const r = await check(
+        page,
+        tier,
+        `The user's goal has been accomplished and the result is visible on the current screen: "${goal}".`,
+      );
+      if (r.pass) {
+        return {
+          success: true,
+          message: `goal satisfied (inferred): ${goal}`,
+          steps: history.steps,
+        };
+      }
+    } catch {
+      // fall through to the original error
+    }
+    return null;
+  };
+
   for (let step = 0; step < maxSteps; step++) {
     const ctx = await tier.buildContext(page);
     const hash = hashString(ctx.screenshotDataUrl);
@@ -123,9 +151,21 @@ export async function act(
     }
 
     if (!plan.action) {
-      // nothing to do and no completion — allow a few replans then bail
-      if (++replanCount > replanLimit) throw new ReplanLimitError();
+      // No action AND no completion — the planner returned an empty/unparseable
+      // response. Nudge it with the exact format + an explicit "complete if
+      // done" so the next prompt differs (a bare retry at temperature 0 repeats
+      // the same blank output).
+      history.addFeedback(
+        'Your previous response did not contain a valid step. Respond with EXACTLY one <action-type> + <action-param-json>, OR — if the goal is already satisfied on screen — <complete success="true">what was accomplished</complete>.',
+      );
+      if (++replanCount > replanLimit) {
+        const done = await inferComplete();
+        if (done) return done;
+        throw new ReplanLimitError();
+      }
       if (screenUnchanged && ++staleCount >= MAX_STALE) {
+        const done = await inferComplete();
+        if (done) return done;
         throw new NoProgressError("no actionable plan", staleCount);
       }
       prevHash = hash;
@@ -226,5 +266,7 @@ export async function act(
   }
 
   flush(undefined);
+  const done = await inferComplete();
+  if (done) return done;
   throw new MaxStepsError();
 }

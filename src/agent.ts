@@ -18,7 +18,7 @@ import {
 } from "./insight/assert.js";
 import { query as queryInsight } from "./insight/extract.js";
 import { locate as locateInsight, type LocateOpt } from "./insight/locate.js";
-import { groundingTier } from "./model/grounding-tier.js";
+import { createGroundingTier } from "./model/grounding-tier.js";
 import type { ModelTier } from "./model/types.js";
 import { act as actLoop } from "./planner/loop.js";
 import { Trace, type TraceConfig } from "./trace/jsonl-trace.js";
@@ -58,7 +58,7 @@ export class Agent {
     this.driver = new PlaywrightDriver(page, {
       waitForSettleTimeoutMs: opts.waitForNavigationTimeoutMs,
     });
-    this.tier = groundingTier; // 'auto' -> grounding for Gemini
+    this.tier = createGroundingTier(opts.model); // 'auto' -> grounding for Gemini
     if (opts.cache) {
       this.cache = new LocateCache({
         id: opts.cache.id,

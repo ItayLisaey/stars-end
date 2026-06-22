@@ -20,62 +20,76 @@ const LocateResponseSchema = z.object({
   errors: z.array(z.string()).optional(),
 });
 
-export const groundingTier: ModelTier = {
-  kind: "grounding",
+/**
+ * Build a grounding tier bound to a specific model id (undefined => the library
+ * default). The model is carried on the tier so every call on it — plan, locate,
+ * and the insight calls (check/assert/query) that receive the tier — uses the
+ * same model.
+ */
+export function createGroundingTier(model?: string): ModelTier {
+  return {
+    kind: "grounding",
+    model,
 
-  async buildContext(page: PageDriver): Promise<UIContext> {
-    const shot = await page.screenshot();
-    const overlay = await page
-      .evaluate<TopLayerResult>(detectTopLayerSurface)
-      .catch(() => ({ present: false }) as TopLayerResult);
-    const openList = await page
-      .evaluate<OpenListResult>(detectOpenListbox)
-      .catch(() => ({ open: false }) as OpenListResult);
-    return {
-      screenshotDataUrl: shot.base64,
-      size: { width: shot.width, height: shot.height },
-      dpr: shot.dpr,
-      overlay: { present: overlay.present, description: overlay.description },
-      openList: { open: openList.open, optionCount: openList.optionCount },
-    };
-  },
+    async buildContext(page: PageDriver): Promise<UIContext> {
+      const shot = await page.screenshot();
+      const overlay = await page
+        .evaluate<TopLayerResult>(detectTopLayerSurface)
+        .catch(() => ({ present: false }) as TopLayerResult);
+      const openList = await page
+        .evaluate<OpenListResult>(detectOpenListbox)
+        .catch(() => ({ open: false }) as OpenListResult);
+      return {
+        screenshotDataUrl: shot.base64,
+        size: { width: shot.width, height: shot.height },
+        dpr: shot.dpr,
+        overlay: { present: overlay.present, description: overlay.description },
+        openList: { open: openList.open, optionCount: openList.optionCount },
+      };
+    },
 
-  async locate(ctx, instruction): Promise<LocateModelResult> {
-    const { object } = await callObject({
-      schema: LocateResponseSchema,
-      system: locateSystemPrompt(geminiAdapter),
-      userText: `Find: ${instruction}`,
-      imageDataUrl: ctx.screenshotDataUrl,
-    });
-    if (!object.bbox?.length) {
-      return { bbox: undefined, errors: object.errors, raw: object };
-    }
-    const bbox = adaptModelCoordinatesToPixelBbox(object.bbox, geminiAdapter, ctx.size);
-    return { bbox, raw: object };
-  },
+    async locate(ctx, instruction): Promise<LocateModelResult> {
+      const { object } = await callObject({
+        model,
+        schema: LocateResponseSchema,
+        system: locateSystemPrompt(geminiAdapter),
+        userText: `Find: ${instruction}`,
+        imageDataUrl: ctx.screenshotDataUrl,
+      });
+      if (!object.bbox?.length) {
+        return { bbox: undefined, errors: object.errors, raw: object };
+      }
+      const bbox = adaptModelCoordinatesToPixelBbox(object.bbox, geminiAdapter, ctx.size);
+      return { bbox, raw: object };
+    },
 
-  async plan(
-    ctx: UIContext,
-    goal: string,
-    history: Step[],
-    actionSpace: ActionDef[],
-    feedback?: string[],
-  ): Promise<PlanModelResult> {
-    const { text } = await callText({
-      system: planningSystemPrompt(actionSpace),
-      userText: planningUserPrompt(goal, history, {
-        feedback,
-        overlay: ctx.overlay,
-        openList: ctx.openList,
-      }),
-      imageDataUrl: ctx.screenshotDataUrl,
-    });
-    const parsed = parsePlan(text);
-    return {
-      thought: parsed.thought,
-      action: parsed.action,
-      complete: parsed.complete,
-      error: parsed.error,
-    };
-  },
-};
+    async plan(
+      ctx: UIContext,
+      goal: string,
+      history: Step[],
+      actionSpace: ActionDef[],
+      feedback?: string[],
+    ): Promise<PlanModelResult> {
+      const { text } = await callText({
+        model,
+        system: planningSystemPrompt(actionSpace),
+        userText: planningUserPrompt(goal, history, {
+          feedback,
+          overlay: ctx.overlay,
+          openList: ctx.openList,
+        }),
+        imageDataUrl: ctx.screenshotDataUrl,
+      });
+      const parsed = parsePlan(text);
+      return {
+        thought: parsed.thought,
+        action: parsed.action,
+        complete: parsed.complete,
+        error: parsed.error,
+      };
+    },
+  };
+}
+
+/** Default grounding tier on the library default model. */
+export const groundingTier: ModelTier = createGroundingTier();
