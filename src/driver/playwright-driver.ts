@@ -93,6 +93,26 @@ export class PlaywrightDriver implements PageDriver {
     });
   }
 
+  async clickXpath(
+    xpath: string,
+    opt?: { button?: "left" | "right" | "middle"; count?: number },
+  ): Promise<boolean> {
+    try {
+      await this.page
+        .locator(`xpath=${xpath}`)
+        .first()
+        .click({
+          button: opt?.button ?? "left",
+          clickCount: opt?.count ?? 1,
+          timeout: this.opts.waitForSettleTimeoutMs ?? 5000,
+        });
+      this.everMoved = true;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async move(x: number, y: number): Promise<void> {
     await this.page.mouse.move(x, y);
     this.everMoved = true;

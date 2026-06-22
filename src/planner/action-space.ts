@@ -4,6 +4,7 @@
  * no `_def` reflection.
  */
 import { z } from "zod";
+import { clickTarget } from "../driver/click-target.js";
 import { verifyInputLanded } from "../driver/input-verify.js";
 import type { PageDriver } from "../driver/types.js";
 import { parseHotkey } from "../driver/keyboard.js";
@@ -88,7 +89,7 @@ export const WEB_ACTIONS: ActionDef[] = [
     sample: { locate: { prompt: 'the "Submit" button' } },
     async run(ctx) {
       const p = requirePoint(ctx, "Tap");
-      await ctx.driver.tap(p.x, p.y);
+      await clickTarget(ctx.driver, p);
       await ctx.driver.waitForSettle();
     },
   },
@@ -101,7 +102,7 @@ export const WEB_ACTIONS: ActionDef[] = [
     sample: { locate: { prompt: "the file row" } },
     async run(ctx) {
       const p = requirePoint(ctx, "RightClick");
-      await ctx.driver.tap(p.x, p.y, { button: "right" });
+      await clickTarget(ctx.driver, p, { button: "right" });
       await ctx.driver.waitForSettle();
     },
   },
@@ -114,7 +115,7 @@ export const WEB_ACTIONS: ActionDef[] = [
     sample: { locate: { prompt: "the editable cell" } },
     async run(ctx) {
       const p = requirePoint(ctx, "DoubleClick");
-      await ctx.driver.tap(p.x, p.y, { count: 2 });
+      await clickTarget(ctx.driver, p, { count: 2 });
       await ctx.driver.waitForSettle();
     },
   },

@@ -43,7 +43,7 @@ describe.skipIf(!HAS_KEY || !process.env.STRESSDIAG)("stress diagnose (live)", (
         .step{display:none}.step.on{display:block}label{display:block;margin:12px 0 4px}
         input[type=text]{font:inherit;padding:8px 10px;width:260px}.opt{display:block;margin:6px 0}button{margin-top:14px;padding:10px 18px}</style>
         <h1>Create account</h1>
-        <div class=step id=s1><label>Full name</label><input id=name type=text><button id=n1>Next</button></div>
+        <div class=step id=s1><label>Full name</label><input id=fullname type=text><button id=n1>Next</button></div>
         <div class=step id=s2><label>Plan</label>
           <label class=opt><input type=radio name=plan value=Basic>Basic</label>
           <label class=opt><input type=radio name=plan value=Pro>Pro</label>
@@ -51,7 +51,7 @@ describe.skipIf(!HAS_KEY || !process.env.STRESSDIAG)("stress diagnose (live)", (
         <div class=step id=s3><label><input type=checkbox id=terms>I accept the terms</label><button id=submit>Submit</button></div>
         <div id=done></div>
         <script>s1.classList.add('on');
-          n1.onclick=()=>{if(name.value.trim()){s1.classList.remove('on');s2.classList.add('on')}};
+          const $=(id)=>document.getElementById(id);n1.onclick=()=>{if($('fullname').value.trim()){s1.classList.remove('on');s2.classList.add('on')}};
           n2.onclick=()=>{const p=document.querySelector('input[name=plan]:checked');if(p){s2.classList.remove('on');s3.classList.add('on')}};
           submit.onclick=()=>{if(terms.checked){const p=document.querySelector('input[name=plan]:checked').value;done.textContent='SUBMITTED name='+name.value+' plan='+p}};</script>`;
     const page = await browser.newPage({
@@ -74,7 +74,7 @@ describe.skipIf(!HAS_KEY || !process.env.STRESSDIAG)("stress diagnose (live)", (
       console.log("T1 THREW", (e as Error).name, (e as Error).message);
     }
     const dump = await page.evaluate(() => ({
-      name: (document.getElementById("name") as HTMLInputElement | null)?.value,
+      name: (document.getElementById("fullname") as HTMLInputElement | null)?.value,
       s2on: document.getElementById("s2")?.classList.contains("on"),
       s3on: document.getElementById("s3")?.classList.contains("on"),
       done: document.getElementById("done")?.textContent,
@@ -111,6 +111,47 @@ describe.skipIf(!HAS_KEY || !process.env.STRESSDIAG)("stress diagnose (live)", (
     }
     // eslint-disable-next-line no-console
     console.log("T3 DOM log =", await page.$eval("#log", (d) => d.textContent));
+    await page.close();
+  }, 300_000);
+
+  it("T8 confirm-cancel trace", async () => {
+    const html = `<!doctype html><meta charset=utf-8><style>${BASE}
+        #dlg{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center}
+        #dlg.on{display:flex}.card{background:#fff;padding:24px;border-radius:10px;max-width:360px}
+        .card button{margin:14px 8px 0 0;padding:10px 16px}#del{padding:10px 16px}</style>
+        <h1>Project</h1><div id=statusbox>Project: Apollo</div>
+        <button id=del>Delete project</button>
+        <div id=dlg role=dialog aria-modal=true><div class=card><p>Delete <b>Apollo</b> permanently?</p>
+          <button id=confirmbtn>Delete permanently</button><button id=keep>Keep project</button></div></div>
+        <script>const $=(id)=>document.getElementById(id);
+          $('del').onclick=()=>$('dlg').classList.add('on');
+          $('confirmbtn').onclick=()=>{$('statusbox').textContent='Project deleted';$('dlg').classList.remove('on')};
+          $('keep').onclick=()=>$('dlg').classList.remove('on');</script>`;
+    const page = await browser.newPage({
+      deviceScaleFactor: 1,
+      viewport: { width: 1000, height: 720 },
+    });
+    await page.setContent(html);
+    try {
+      const r = await new Agent(page, {
+        maxPlanningSteps: 10,
+        model: MODEL,
+        trace: trace("T8"),
+      }).act(
+        "Open the delete confirmation for the project, then cancel it — keep the project, do NOT delete it.",
+      );
+      // eslint-disable-next-line no-console
+      console.log("T8 OUTCOME", r.success, r.message);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log("T8 THREW", (e as Error).name, (e as Error).message);
+    }
+    const dump = await page.evaluate(() => ({
+      status: document.getElementById("statusbox")?.textContent,
+      dlgOpen: document.getElementById("dlg")?.classList.contains("on"),
+    }));
+    // eslint-disable-next-line no-console
+    console.log("T8 DOM", JSON.stringify(dump));
     await page.close();
   }, 300_000);
 });

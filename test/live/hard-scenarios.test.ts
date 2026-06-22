@@ -60,7 +60,7 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       input[type=text]{font:inherit;padding:8px 10px;width:260px}
       .opt{display:block;margin:6px 0}button{margin-top:14px;padding:10px 18px}</style>
       <h1>Create account</h1>
-      <div class=step id=s1 ><label>Full name</label><input id=name type=text>
+      <div class=step id=s1 ><label>Full name</label><input id=fullname type=text>
         <button id=n1>Next</button></div>
       <div class=step id=s2><label>Plan</label>
         <label class=opt><input type=radio name=plan value=Basic>Basic</label>
@@ -71,10 +71,11 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
         <button id=submit>Submit</button></div>
       <div id=done></div>
       <script>
-        s1.classList.add('on');
-        n1.onclick=()=>{if(name.value.trim()){s1.classList.remove('on');s2.classList.add('on')}};
-        n2.onclick=()=>{const p=document.querySelector('input[name=plan]:checked');if(p){s2.classList.remove('on');s3.classList.add('on')}};
-        submit.onclick=()=>{if(terms.checked){const p=document.querySelector('input[name=plan]:checked').value;done.textContent='SUBMITTED name='+name.value+' plan='+p}};
+        const $ = (id) => document.getElementById(id);
+        $('s1').classList.add('on');
+        $('n1').onclick=()=>{if($('fullname').value.trim()){$('s1').classList.remove('on');$('s2').classList.add('on')}};
+        $('n2').onclick=()=>{const p=document.querySelector('input[name=plan]:checked');if(p){$('s2').classList.remove('on');$('s3').classList.add('on')}};
+        $('submit').onclick=()=>{if($('terms').checked){const p=document.querySelector('input[name=plan]:checked').value;$('done').textContent='SUBMITTED name='+$('fullname').value+' plan='+p}};
       </script>`;
     const out = await withPage(html, async (page) => {
       const r = await new Agent(page, { maxPlanningSteps: 14, model: MODEL }).act(
@@ -261,26 +262,30 @@ describe.skipIf(!HAS_KEY || !process.env.STRESS)("hard scenarios (live Gemini)",
       #dlg{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center}
       #dlg.on{display:flex}.card{background:#fff;padding:24px;border-radius:10px;max-width:360px}
       .card button{margin:14px 8px 0 0;padding:10px 16px}#del{padding:10px 16px}</style>
-      <h1>Project</h1><div id=status>Project: Apollo</div>
+      <h1>Project</h1><div id=statusbox>Project: Apollo</div>
       <button id=del>Delete project</button>
       <div id=dlg role=dialog aria-modal=true><div class=card><p>Delete <b>Apollo</b> permanently? This cannot be undone.</p>
-        <button id=confirm>Delete permanently</button><button id=keep>Keep project</button></div></div>
+        <button id=confirmbtn>Delete permanently</button><button id=keep>Keep project</button></div></div>
       <script>
-        del.onclick=()=>dlg.classList.add('on');
-        confirm.onclick=()=>{status.textContent='Project deleted';dlg.classList.remove('on')};
-        keep.onclick=()=>dlg.classList.remove('on');
+        const $ = (id) => document.getElementById(id);
+        $('del').onclick=()=>$('dlg').classList.add('on');
+        $('confirmbtn').onclick=()=>{$('statusbox').textContent='Project deleted';$('dlg').classList.remove('on')};
+        // cancel leaves an observable trace (real apps confirm the cancel), so
+        // "did nothing" is distinguishable from "opened then cancelled".
+        $('keep').onclick=()=>{$('statusbox').textContent='Apollo kept — deletion cancelled';$('dlg').classList.remove('on')};
       </script>`;
     const out = await withPage(html, async (page) => {
       const r = await new Agent(page, { maxPlanningSteps: 10, model: MODEL }).act(
         "Open the delete confirmation for the project, then cancel it — keep the project, do NOT delete it.",
       );
-      const status = await page.$eval("#status", (d) => d.textContent ?? "");
+      const status = await page.$eval("#statusbox", (d) => d.textContent ?? "");
       const dlgOpen = await page.$eval("#dlg", (e) => e.classList.contains("on"));
       return { success: r.success, status, dlgOpen };
     });
     // eslint-disable-next-line no-console
     console.log("T8:", out);
-    expect(out.status).toBe("Project: Apollo"); // not deleted
+    expect(out.status).toContain("cancelled"); // actually opened then cancelled
+    expect(out.status).not.toContain("deleted"); // did NOT delete
     expect(out.dlgOpen).toBe(false); // dialog dismissed
   });
 });

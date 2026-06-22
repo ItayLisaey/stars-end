@@ -6,6 +6,7 @@ import type { Page } from "playwright";
 import type { z } from "zod";
 import { LocateCache, type CacheMode } from "./cache/locate-cache.js";
 import { PlaywrightDriver } from "./driver/playwright-driver.js";
+import { clickTarget } from "./driver/click-target.js";
 import { verifyInputLanded } from "./driver/input-verify.js";
 import { parseHotkey } from "./driver/keyboard.js";
 import type { PageDriver } from "./driver/types.js";
@@ -107,14 +108,14 @@ export class Agent {
 
   async tap(prompt: string, opt?: LocateOpt): Promise<void> {
     const { x, y } = await this.resolvePoint(prompt, opt);
-    await this.driver.tap(x, y);
+    await clickTarget(this.driver, { x, y });
     await this.driver.waitForSettle();
     this.trace.record("action", { actionType: "tap", prompt, point: { x, y } });
   }
 
   async rightClick(prompt: string, opt?: LocateOpt): Promise<void> {
     const { x, y } = await this.resolvePoint(prompt, opt);
-    await this.driver.tap(x, y, { button: "right" });
+    await clickTarget(this.driver, { x, y }, { button: "right" });
     await this.driver.waitForSettle();
     this.trace.record("action", {
       actionType: "rightClick",
@@ -125,7 +126,7 @@ export class Agent {
 
   async doubleClick(prompt: string, opt?: LocateOpt): Promise<void> {
     const { x, y } = await this.resolvePoint(prompt, opt);
-    await this.driver.tap(x, y, { count: 2 });
+    await clickTarget(this.driver, { x, y }, { count: 2 });
     await this.driver.waitForSettle();
     this.trace.record("action", {
       actionType: "doubleClick",
