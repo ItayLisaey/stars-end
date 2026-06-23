@@ -5,6 +5,7 @@
  * it never reached the model calls.
  */
 import { describe, expect, it } from "vitest";
+import { UnsupportedModelError } from "../errors.js";
 import { createGroundingTier, groundingTier } from "./grounding-tier.js";
 
 describe("createGroundingTier", () => {
@@ -18,6 +19,10 @@ describe("createGroundingTier", () => {
   });
 
   it("is a grounding tier", () => {
-    expect(createGroundingTier("x").kind).toBe("grounding");
+    expect(createGroundingTier("gemini-2.5-flash").kind).toBe("grounding");
+  });
+
+  it("rejects a model with no registered profile (can't pick a coordinate adapter)", () => {
+    expect(() => createGroundingTier("mystery-model")).toThrow(UnsupportedModelError);
   });
 });

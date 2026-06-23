@@ -5,13 +5,16 @@
  * returns empty/garbled text.
  */
 import { describe, expect, it } from "vitest";
-import { geminiProviderOptions } from "./gemini.js";
+import { geminiProfile } from "./gemini.js";
 
 const cfg = (model: string) =>
-  (geminiProviderOptions(model).google as { thinkingConfig: Record<string, unknown> })
-    .thinkingConfig;
+  (
+    (geminiProfile.providerOptions(model)?.google ?? {}) as {
+      thinkingConfig: Record<string, unknown>;
+    }
+  ).thinkingConfig;
 
-describe("geminiProviderOptions", () => {
+describe("gemini profile thinking config", () => {
   it("disables thinking via thinkingBudget on 2.5 models", () => {
     expect(cfg("gemini-2.5-flash")).toMatchObject({ thinkingBudget: 0 });
     expect(cfg("gemini-2.5-flash")).not.toHaveProperty("thinkingLevel");

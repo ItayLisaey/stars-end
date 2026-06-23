@@ -114,6 +114,18 @@ export class CoordinateParseError extends Error {
   }
 }
 
+/** No registered model profile matches the requested model id. */
+export class UnsupportedModelError extends Error {
+  readonly modelId: string;
+  constructor(modelId: string) {
+    super(
+      `no model profile matches "${modelId}" — register one with registerProfile({ matches, languageModel, adapter, providerOptions })`,
+    );
+    this.name = "UnsupportedModelError";
+    this.modelId = modelId;
+  }
+}
+
 /** Safely extract a message from an unknown thrown value. */
 export function getSafeErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;

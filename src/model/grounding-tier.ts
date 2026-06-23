@@ -2,6 +2,7 @@
  * Grounding tier — the default. VL model: screenshot -> bbox.
  */
 import { z } from "zod";
+import { DEFAULT_MODEL } from "../config.js";
 import type { PageDriver } from "../driver/types.js";
 import { adaptModelCoordinatesToPixelBbox } from "../geometry/coordinates.js";
 import { check } from "../insight/assert.js";
@@ -13,7 +14,7 @@ import { parsePlan } from "../planner/parse.js";
 import { planningSystemPrompt, planningUserPrompt } from "../planner/prompt.js";
 import type { Step } from "../types.js";
 import { callObject, callText } from "./call.js";
-import { geminiAdapter } from "./gemini.js";
+import { profileFor } from "./profile.js";
 import type { LocateModelResult, ModelTier, PlanModelResult, UIContext } from "./types.js";
 
 const LocateResponseSchema = z.object({
@@ -28,6 +29,9 @@ const LocateResponseSchema = z.object({
  * same model.
  */
 export function createGroundingTier(model?: string): ModelTier {
+  // the coordinate format is a property of the grounding model — pull it from
+  // the model's profile so non-Gemini grounding models work too.
+  const adapter = profileFor(model ?? DEFAULT_MODEL).adapter;
   const tier: ModelTier = {
     kind: "grounding",
     model,
@@ -53,14 +57,14 @@ export function createGroundingTier(model?: string): ModelTier {
       const { object } = await callObject({
         model,
         schema: LocateResponseSchema,
-        system: locateSystemPrompt(geminiAdapter),
+        system: locateSystemPrompt(adapter),
         userText: `Find: ${instruction}`,
         imageDataUrl: ctx.screenshotDataUrl,
       });
       if (!object.bbox?.length) {
         return { bbox: undefined, errors: object.errors, raw: object };
       }
-      const bbox = adaptModelCoordinatesToPixelBbox(object.bbox, geminiAdapter, ctx.size);
+      const bbox = adaptModelCoordinatesToPixelBbox(object.bbox, adapter, ctx.size);
       return { bbox, raw: object };
     },
 
