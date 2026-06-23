@@ -4,7 +4,7 @@
  */
 import { generateObject, generateText, type LanguageModelV1 } from "ai";
 import type { z } from "zod";
-import { resolveModel } from "../config.js";
+import { DEFAULT_MODEL, resolveModel } from "../config.js";
 import { geminiProviderOptions } from "./gemini.js";
 
 interface BaseCallArgs {
@@ -17,6 +17,12 @@ interface BaseCallArgs {
 function resolve(model: BaseCallArgs["model"]): LanguageModelV1 {
   if (!model) return resolveModel();
   return typeof model === "string" ? resolveModel(model) : model;
+}
+
+/** Resolve the model id string, for picking generation-specific options. */
+function modelName(model: BaseCallArgs["model"]): string {
+  if (typeof model === "string") return model;
+  return model?.modelId ?? DEFAULT_MODEL;
 }
 
 function userContent(args: BaseCallArgs) {
@@ -39,7 +45,7 @@ export async function callObject<T>(
     model: resolve(args.model),
     schema: args.schema,
     temperature: 0, // coordinate jitter is real
-    providerOptions: geminiProviderOptions,
+    providerOptions: geminiProviderOptions(modelName(args.model)),
     system: args.system,
     messages: [{ role: "user", content: userContent(args) }],
   });
@@ -50,7 +56,7 @@ export async function callText(args: BaseCallArgs): Promise<{ text: string; usag
   const { text, usage } = await generateText({
     model: resolve(args.model),
     temperature: 0,
-    providerOptions: geminiProviderOptions,
+    providerOptions: geminiProviderOptions(modelName(args.model)),
     system: args.system,
     messages: [{ role: "user", content: userContent(args) }],
   });
