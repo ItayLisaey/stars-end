@@ -1,5 +1,25 @@
 # stars-end
 
+## 0.4.0
+
+### Minor Changes
+
+- 902c54a: Add a model-profile plugin system. Everything model/provider-specific — the AI SDK model factory, the coordinate adapter (how the model emits bboxes), the `providerOptions` (e.g. the per-generation Gemini thinking config), and the sampling temperature — is now bundled in a `ModelProfile` resolved from a registry, instead of being scattered across `config`, `call`, and the grounding tier.
+
+  New public API:
+
+  - `registerProfile(profile)` — plug in a custom model/provider (custom profiles take precedence over built-ins, so you can also override one).
+  - `profileFor(modelId)` and the `ModelProfile` / `ProviderOptions` types.
+  - `UnsupportedModelError` — thrown when no profile matches a model id.
+
+  The built-in Gemini profile carries the generation-aware thinking config. Using a model with no matching profile now throws `UnsupportedModelError` (it can't pick a coordinate adapter / provider) rather than silently misbehaving.
+
+### Patch Changes
+
+- c5245c2: Fix Gemini "thinking" config per model generation — Gemini 3.x models (e.g. `gemini-3.5-flash`) were being crippled. We forced `thinkingConfig.thinkingBudget: 0` on every call, which is correct for 2.5 (disables thinking) but a documented anti-pattern on thinking-first 3.x models: they can't disable thinking and use `thinkingLevel`, not `thinkingBudget`. Forcing the budget to 0 starved their output, producing empty/garbled planning responses (which looked like "3.5 is worse than 2.5" — it wasn't).
+
+  Now generation-aware: 2.5 keeps `thinkingBudget: 0`; 3.x uses `thinkingLevel: "minimal"`. With the fix, `gemini-3.5-flash` passes the full live stress suite 8/8 (was 6/8 with empty-completion glitches).
+
 ## 0.3.0
 
 ### Minor Changes
